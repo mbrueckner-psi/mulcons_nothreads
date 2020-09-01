@@ -150,6 +150,7 @@ int main(int argc , char *argv[])
 		//then its an incoming connection 
 		if (FD_ISSET(master_socket, &readfds)) 
 		{ 
+			printf("Activity on master socket\n");
 			if ((new_socket = accept(master_socket, 
 					(struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 
 			{ 
@@ -195,11 +196,13 @@ int main(int argc , char *argv[])
 			sd = client_socket[i]; 
 				
 			if (FD_ISSET( sd , &readfds)) 
-			{ 
+			{
+				printf("Activity on socket no %d: %d\n", i, sd); 
 				//Check if it was for closing , and also read the 
 				//incoming message 
 				if ((valread = read( sd , buffer, 1024)) == 0) 
 				{ 
+					printf("No data recevied\n");
 					//Somebody disconnected , get his details and print 
 					getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
 					printf("Host disconnected , ip %s , port %d \n" , 
@@ -219,6 +222,7 @@ int main(int argc , char *argv[])
 				// Handle message input 
 				else
 				{ 
+					printf("Data received\n");
 					// Command parsing
 					switch(buffer[0])
 					{
@@ -277,6 +281,11 @@ int main(int argc , char *argv[])
 						default:
 							// Invalid command
 							// A message like "invalid command" would be nice
+							if (i == acq_socket_no)
+							{
+								fpga_stop_acquire();
+								acq_socket_no = -1;
+							}
 							close(sd);
 							client_socket[i] = 0;
 							break;
