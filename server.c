@@ -1,5 +1,3 @@
-//Example code: A simple server side code, which echos back the received message. 
-//Handle multiple socket connections with select and fd_set on Linux 
 #include <stdio.h> 
 #include <string.h> //strlen 
 #include <stdlib.h> 
@@ -15,12 +13,14 @@
 #define FALSE 0 
 #define PORT 8888 
 
-int acq_countdown = 0;
-
 int fpga_read_temp()
 {
 	return 50;
 }
+
+// Acquisition if faked by decrementing a counter whenever acq status is checked.
+
+int acq_countdown = 0;
 
 void fpga_start_acquire()
 {
@@ -49,9 +49,11 @@ int main(int argc , char *argv[])
 { 
 	int opt = TRUE;
 	int master_socket, addrlen, new_socket, client_socket[30], max_clients = 30, activity, i, valread, sd;
+	// Store the socket of the client which started the acquisition
 	int acq_socket_no = -1;
 	int ret;
 	int max_sd;
+	// timeout of 0 for select()
 	struct timeval timeout = { .tv_sec = 0, .tv_usec = 0 };
 	struct sockaddr_in address;
 	int temp;
@@ -61,8 +63,8 @@ int main(int argc , char *argv[])
 	//set of socket descriptors 
 	fd_set readfds; 
 		
-	//a message 
-	char *message = "ECHO Daemon v1.0 \r\n"; 
+	////a message 
+	//char *message = "ECHO Daemon v1.0 \r\n"; 
 
 
 	//initialise all client_socket[] to 0 so not checked 
@@ -135,7 +137,8 @@ int main(int argc , char *argv[])
 				max_sd = sd; 
 		} 
 	
-		//wait for an activity on one of the sockets , timeout is 0, so don't block 
+		// Check for any activity on any sockets. Timeout is set to 0, so select won't block
+		// For a blocking select() set timeout parameter to NULL
 		activity = select( max_sd + 1 , &readfds , NULL , NULL , &timeout); 
 	
 		if ((activity < 0) && (errno!=EINTR)) 
@@ -195,13 +198,14 @@ int main(int argc , char *argv[])
 					getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
 					printf("Host disconnected , ip %s , port %d \n" , 
 						inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
-						
-					//Close the socket and mark as 0 in list for reuse 
+					
+					// If acquisition client has closed the connection, stop acquisition
 					if (acq_socket_no == i)
 					{
 						acq_socket_no = -1;
 						fpga_stop_acquire();
 					}
+					//Close the socket and mark as 0 in list for reuse 
 					close( sd ); 
 					client_socket[i] = 0; 
 				} 
@@ -209,9 +213,12 @@ int main(int argc , char *argv[])
 				// Handle message input 
 				else
 				{ 
+					// Command parsing
 					switch(buffer[0])
 					{
 						case 'a' :
+							// Start acquire
+							// Check if acquire has been started by another client already
 							if (acq_socket_no == -1)
 							{
 								fpga_start_acquire();
@@ -219,12 +226,15 @@ int main(int argc , char *argv[])
 							}
 							else
 							{
+								// If acquisition has been started by another client, just close connection
+								// a message like "Acquisition already started" would be nice
 								close(sd);
 								client_socket[i] = 0;
 							}
 
 							break;
 						case 't' :
+							// Send temperature and close connection afterwards
 							temp = fpga_read_temp();
 							sprintf(buffer, "FPGA Temperature: %d °C\n", temp);
 							send(sd, buffer, strlen(buffer), 0);
@@ -232,18 +242,23 @@ int main(int argc , char *argv[])
 							client_socket[i] = 0;
 							break;
 						case 's' :
+							// Stop acquire
+							// First check if an acquisition is running
 							if (acq_socket_no > -1)
 							{
+								// Stop it and close connection to the acq client (stop blocking)
 								fpga_stop_acquire();
 								close(client_socket[acq_socket_no]);
 								client_socket[acq_socket_no] = 0;
 								acq_socket_no = -1;
 							}
+							// Close connection to the 's' sending client
 							close(sd);
 							client_socket[i] = 0;
 
 							break;
 						case 'x' :
+							// Check status and close connection
 							if (acq_socket_no > -1)
 								sprintf(buffer, "Acquisition running\n");
 							else
@@ -255,6 +270,7 @@ int main(int argc , char *argv[])
 							break;
 						default:
 							// Invalid command
+							// A message like "invalid command" would be nice
 							close(sd);
 							client_socket[i] = 0;
 							break;
@@ -267,11 +283,13 @@ int main(int argc , char *argv[])
 			} 
 		} 
 
+		// Check for acquisition status on every loop
 		if (acq_socket_no > -1)
 		{
 			ret = fpga_check_acquire_state();
 			if (ret > 0)
 			{
+				// If acquisition done send return value to client and close connection
 				send(client_socket[acq_socket_no], &ret, sizeof(ret), 0);
 				close(client_socket[acq_socket_no]);
 				client_socket[acq_socket_no] = 0;
@@ -280,6 +298,7 @@ int main(int argc , char *argv[])
 		}
 
 		// should be done nicer
+		// Just wait a little bit
 		usleep(100*1000);
 
 	} 
