@@ -1,6 +1,10 @@
 # mulcons_nothreads
 
 This is a small server simulating a detector server.
+
+This code is based on this example:
+[https://www.geeksforgeeks.org/socket-programming-in-cc-handling-multiple-clients-on-server-without-multi-threading/]
+
 Compile it with
 ```sh
 gcc -Wall server.c -o server
