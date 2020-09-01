@@ -48,7 +48,7 @@ void fpga_stop_acquire()
 int main(int argc , char *argv[]) 
 { 
 	int opt = TRUE;
-	int master_socket, addrlen, new_socket, client_socket[30], max_clients = 30, activity, i, valread, sd;
+	int master_socket, addrlen, new_socket, client_socket[3], max_clients = 3, activity, i, valread, sd;
 	// Store the socket of the client which started the acquisition
 	int acq_socket_no = -1;
 	int ret;
@@ -181,6 +181,12 @@ int main(int argc , char *argv[])
 					break; 
 				} 
 			} 
+			if (i==max_clients)
+			{
+				// No free sockets
+				printf("No free sockets left, closing connection\n");
+				close(new_socket);
+			}
 		} 
 			
 		//else its some IO operation on some other socket 
