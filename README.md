@@ -17,6 +17,7 @@ telnet localhost 8888
 ```
 and type a
 which starts the "acquisition".
+
 You see a countdown on the server side. The connection
 remains open and telnet is still running.
 
@@ -25,6 +26,7 @@ In the third window open another telnet session
 telnet localhost 8888
 ```
 and type t
+
 This returns the "temperature" (always 50°C) while the "acquisition" is still running.
 
 Server command list:
